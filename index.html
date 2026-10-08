@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>BookLodge Frontend Integration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Flow-spine handbook: cool paper and deep ink; teal marks what the frontend owns,
+     slate what the server handles; amber and red stay semantic. */
+  :root {
+    --paper: #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink: #131c26;
+    --body: #38424f;
+    --muted: #6a7684;
+    --line: #dde3e9;
+    --line-strong: #c3ccd5;
+    --frontend: #0b6b62;
+    --frontend-soft: #e0f0ee;
+    --server: #3d4c5c;
+    --server-soft: #eaeef2;
+    --ok: #12603a;
+    --ok-soft: #e2f1e8;
+    --warn: #8a5300;
+    --warn-soft: #fbefd9;
+    --danger: #a32a2a;
+    --danger-soft: #fae7e7;
+    --code-bg: #eaeef3;
+    --display: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(19, 28, 38, .05), 0 6px 16px -12px rgba(19, 28, 38, .18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0e141b;
+      --surface: #151d26;
+      --surface-2: #1b242e;
+      --ink: #e8edf2;
+      --body: #c2ccd6;
+      --muted: #8b99a6;
+      --line: #26313d;
+      --line-strong: #35424f;
+      --frontend: #52d3c2;
+      --frontend-soft: #0f302d;
+      --server: #a9b6c4;
+      --server-soft: #1c2530;
+      --ok: #56d79b;
+      --ok-soft: #102c22;
+      --warn: #e3b341;
+      --warn-soft: #302610;
+      --danger: #ef8b8b;
+      --danger-soft: #371c1c;
+      --code-bg: #0b1118;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px -14px rgba(0, 0, 0, .6);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0e141b;
+    --surface: #151d26;
+    --surface-2: #1b242e;
+    --ink: #e8edf2;
+    --body: #c2ccd6;
+    --muted: #8b99a6;
+    --line: #26313d;
+    --line-strong: #35424f;
+    --frontend: #52d3c2;
+    --frontend-soft: #0f302d;
+    --server: #a9b6c4;
+    --server-soft: #1c2530;
+    --ok: #56d79b;
+    --ok-soft: #102c22;
+    --warn: #e3b341;
+    --warn-soft: #302610;
+    --danger: #ef8b8b;
+    --danger-soft: #371c1c;
+    --code-bg: #0b1118;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px -14px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-block: 0 4rem;
+    padding-inline: 16px;
+    background: var(--paper);
+    color: var(--body);
+    font-family: var(--display);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap { max-width: 60rem; margin-inline: auto; }
+  .prose { max-width: 40rem; }
+
+  /* ── masthead ─────────────────────────────────────────── */
+  .masthead {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    margin-inline: -16px;
+    padding-inline: 16px;
+    padding-block: .7rem;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .masthead-row {
+    max-width: 60rem;
+    margin-inline: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .4rem 1.25rem;
+  }
+  .wordmark {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -.01em;
+    margin: 0;
+    white-space: nowrap;
+  }
+  .wordmark span { color: var(--frontend); }
+  nav.toc { display: flex; flex-wrap: wrap; gap: .25rem .85rem; font-size: .82rem; }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    padding-block: .15rem;
+    border-bottom: 1px solid transparent;
+  }
+  nav.toc a:hover, nav.toc a:focus-visible { color: var(--frontend); border-bottom-color: currentColor; }
+
+  /* ── headings ─────────────────────────────────────────── */
+  h1 {
+    font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.6rem);
+    line-height: 1.12;
+    letter-spacing: -.025em;
+    color: var(--ink);
+    margin: 2.75rem 0 0;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+  .standfirst {
+    font-size: 1.05rem;
+    color: var(--muted);
+    margin: .85rem 0 0;
+    max-width: 38rem;
+  }
+  h2 {
+    font-size: 1.3rem;
+    letter-spacing: -.015em;
+    color: var(--ink);
+    margin: 3.25rem 0 0;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--line);
+    text-wrap: balance;
+    font-weight: 600;
+  }
+  h3 {
+    font-size: 1rem;
+    letter-spacing: -.005em;
+    color: var(--ink);
+    margin: 2rem 0 .5rem;
+    font-weight: 600;
+  }
+  h4 {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 1.5rem 0 .45rem;
+  }
+  .eyebrow {
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--frontend);
+    font-weight: 600;
+    margin: 3.25rem 0 -.5rem;
+  }
+  p { margin: 0 0 .9rem; }
+  a { color: var(--frontend); }
+  strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: var(--mono);
+    font-size: .855em;
+    background: var(--code-bg);
+    padding: .12em .34em;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  ul, ol { margin: 0 0 .9rem; padding-left: 1.15rem; }
+  li { margin-bottom: .35rem; }
+  li::marker { color: var(--muted); }
+
+  /* ── callouts ─────────────────────────────────────────── */
+  .callout {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--server);
+    background: var(--surface);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: .9rem 1.1rem;
+    margin: 1.25rem 0;
+    box-shadow: var(--shadow);
+  }
+  .callout > :last-child { margin-bottom: 0; }
+  .callout .tag {
+    display: block;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-weight: 600;
+    color: var(--server);
+    margin-bottom: .3rem;
+  }
+  .callout.frontend { border-left-color: var(--frontend); }
+  .callout.frontend .tag { color: var(--frontend); }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .callout.warn .tag { color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); background: var(--danger-soft); }
+  .callout.danger .tag { color: var(--danger); }
+
+  /* ── chips ────────────────────────────────────────────── */
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .02em;
+    padding: .13rem .45rem;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .chip.fe { background: var(--frontend-soft); color: var(--frontend); }
+  .chip.be { background: var(--server-soft); color: var(--server); }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.danger { background: var(--danger-soft); color: var(--danger); }
+  .chip.m { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-strong); }
+
+  /* ── the flow spine ───────────────────────────────────── */
+  .spine { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: .9rem; }
+  .spine > li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: .1rem 1rem;
+    margin: 0;
+  }
+  .spine .num {
+    font-family: var(--mono);
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--muted);
+    padding-top: .95rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .spine .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: .85rem 1rem 1rem;
+    box-shadow: var(--shadow);
+    min-width: 0;
+  }
+  .spine .card.own { border-color: color-mix(in srgb, var(--frontend) 40%, var(--line)); }
+  .spine > li::before {
+    content: "";
+    position: absolute;
+    left: .95rem;
+    top: 2.4rem;
+    bottom: -1.4rem;
+    width: 1px;
+    background: var(--line-strong);
+  }
+  .spine > li:last-child::before { display: none; }
+  .step-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .35rem;
+  }
+  .step-head h3 { margin: 0; font-size: .98rem; }
+  .step-card-note { font-size: .9rem; color: var(--body); margin: 0 0 .55rem; }
+  .step-card-note:last-child { margin-bottom: 0; }
+  .ep {
+    font-family: var(--mono);
+    font-size: .8rem;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: .1rem .4rem;
+  }
+
+  /* ── code ─────────────────────────────────────────────── */
+  .codewrap { position: relative; margin: .6rem 0 1rem; min-width: 0; }
+  .codewrap pre {
+    margin: 0;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: .8rem .9rem;
+    overflow-x: auto;
+    font-size: .82rem;
+    line-height: 1.55;
+  }
+  .codewrap pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 1em;
+    color: var(--ink);
+    white-space: pre;
+  }
+  .copy {
+    position: absolute;
+    top: .45rem;
+    right: .45rem;
+    font-family: var(--display);
+    font-size: .7rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: .2rem .45rem;
+    cursor: pointer;
+  }
+  .copy:hover, .copy:focus-visible { color: var(--frontend); border-color: var(--frontend); }
+  .cap {
+    font-size: .78rem;
+    color: var(--muted);
+    margin: -.65rem 0 1rem;
+    font-family: var(--mono);
+  }
+
+  /* ── tables ───────────────────────────────────────────── */
+  .tablewrap { overflow-x: auto; margin: 1rem 0 1.25rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .855rem; }
+  th, td { text-align: left; padding: .55rem .75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--surface-2);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.mono, th.mono { font-family: var(--mono); font-size: .8rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  td.nowrap { white-space: nowrap; }
+
+  /* ── endpoint cards ───────────────────────────────────── */
+  .ep-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0 1rem 1rem;
+    margin: 1rem 0;
+    box-shadow: var(--shadow);
+    min-width: 0;
+  }
+  .ep-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    padding: .8rem 0 .6rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: .85rem;
+  }
+  .ep-head .path {
+    font-family: var(--mono);
+    font-size: .875rem;
+    font-weight: 500;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .ep-head .verb {
+    font-family: var(--mono);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    padding: .13rem .4rem;
+    border-radius: 4px;
+    background: var(--server-soft);
+    color: var(--server);
+  }
+  .ep-head .spacer { margin-left: auto; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-size: .82rem; color: var(--muted); margin: 1rem 0 0; padding: 0; list-style: none; }
+  .legend li { display: flex; align-items: center; gap: .4rem; margin: 0; }
+
+  .footer {
+    margin-top: 3.5rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--line);
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  .footer code { font-size: .8em; }
+
+  :focus-visible { outline: 2px solid var(--frontend); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media (max-width: 520px) {
+    .spine > li { grid-template-columns: 1.4rem minmax(0, 1fr); gap: .1rem .6rem; }
+    .spine > li::before { left: .65rem; }
+    .ep-head .spacer { margin-left: 0; }
+  }
+</style>
+
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-row">
+    <p class="wordmark">BookLodge <span>API</span></p>
+    <nav class="toc">
+      <a href="#flow">Flow</a>
+      <a href="#auth">Auth</a>
+      <a href="#endpoints">Endpoints</a>
+      <a href="#statuses">Statuses</a>
+      <a href="#errors">Errors</a>
+      <a href="#checklist">Checklist</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <h1>Frontend integration guide</h1>
+  <p class="standfirst">Everything needed to take a customer from a search to a confirmed hotel reservation: the six steps, every endpoint, and what to do when the provider says no.</p>
+
+  <div class="callout danger">
+    <span class="tag">Read these two rules first</span>
+    <p style="margin-bottom:.5rem"><strong>Never send payment data to <code>POST /api/bookings</code>.</strong> It accepts <code>prebookId</code>, <code>holder</code> and <code>guests</code> — nothing else. No <code>transactionId</code>, and no <code>paymentSuccessful: true</code>. The server books using the prebook pair it stored, so a flag from the browser can never authorise a booking.</p>
+    <p style="margin-bottom:0"><strong>When a response carries <code>ambiguous: true</code>, stop and do not retry.</strong> That flag means the hotel provider may have completed the booking even though the call failed. Retrying can produce a second reservation. Show "we're checking your booking" and point the customer at their booking list.</p>
+  </div>
+
+  <h2 id="basics" style="margin-top:2.5rem">Talking to the API</h2>
+  <p class="prose">All endpoints live under <code>/api</code>. Requests and responses are JSON; send <code>Content-Type: application/json</code> on anything with a body. In development the server listens on port 5000, so the base URL is <code>http://localhost:5000/api</code>. Ask the team for the deployed host.</p>
+
+  <p class="prose">CORS is locked to one origin. Requests from anywhere else are refused with <code>403 Not allowed by CORS</code>, so run the frontend on the origin the backend was configured with (<code>FRONTEND_URL</code>, <code>http://localhost:3000</code> by default).</p>
+
+  <h3>Every response has the same envelope</h3>
+  <div class="codewrap">
+    <button class="copy" type="button">Copy</button>
+<pre><code>// success
+{ "success": true, "message": "Hotels retrieved successfully", "data": { } }
+
+// failure
+{ "success": false, "message": "No pending prebook for this booking", "data": null }</code></pre>
+  </div>
+  <p class="prose">Branch on <code>success</code>, read <code>message</code> when you need something to show a person, and take the payload from <code>data</code>. A failure that came from the hotel provider puts a <code>provider</code> object in <code>data</code> instead of <code>null</code> — see <a href="#errors">Errors</a>.</p>
+
+  <h2 id="flow">The booking flow</h2>
+  <p class="prose">Six steps. Steps 1–3 are ordinary reads, step 4 starts a reservation hold, <strong>step 5 is yours</strong>, and step 6 is a request the server will only honour once payment has actually settled.</p>
+
+  <ul class="legend">
+    <li><span class="chip fe">frontend</span> you drive this</li>
+    <li><span class="chip be">backend</span> the API handles it</li>
+  </ul>
+
+  <ol class="spine">
+    <li>
+      <div class="num">01</div>
+      <div class="card">
+        <div class="step-head">
+          <h3>Find the place</h3>
+          <span class="chip fe">frontend</span>
+        </div>
+        <p class="step-card-note">Autocomplete. Each result carries the <code>placeId</code> that step 2 needs.</p>
+        <p><span class="ep">GET /api/locations/search?query=Paris</span></p>
+      </div>
+    </li>
+    <li>
+      <div class="num">02</div>
+      <div class="card">
+        <div class="step-head">
+          <h3>Search hotels</h3>
+          <span class="chip fe">frontend</span>
+        </div>
+        <p class="step-card-note">Give the <code>placeId</code>, the dates and the occupancy. You get hotels back, each with its cheapest available rate for those dates.</p>
+        <p><span class="ep">POST /api/hotels/search</span></p>
+      </div>
+    </li>
+    <li>
+      <div class="num">03</div>
+      <div class="card">
+        <div class="step-head">
+          <h3>Open a hotel and pick a room</h3>
+          <span class="chip fe">frontend</span>
+        </div>
+        <p class="step-card-note">Every rate here has an <code>offerId</code>. That string is the only handle the provider accepts, so carry it into step 4 and don't invent or modify one.</p>
+        <p><span class="ep">POST /api/hotels/:hotelId/details</span></p>
+      </div>
+    </li>
+    <li>
+      <div class="num">04</div>
+      <div class="card">
+        <div class="step-head">
+          <h3>Prebook — hold the room and the price</h3>
+          <span class="chip fe">frontend calls it</span>
+          <span class="chip be">backend owns the state</span>
+        </div>
+        <p class="step-card-note">The provider re-checks availability and re-prices the room, then returns the three things the rest of the flow depends on: <code>prebookId</code>, <code>transactionId</code> and <code>secretKey</code>. The server also records this as a pending booking attempt and hands back a <code>clientReference</code>.</p>
+        <p class="step-card-note"><strong>The customer must already be logged in.</strong> This endpoint needs a token, and step 6 only works for the same account. There is no guest checkout.</p>
+        <p><span class="ep">POST /api/bookings/prebook</span> &nbsp;<span class="chip fe">auth</span></p>
+      </div>
+    </li>
+    <li>
+      <div class="num">05</div>
+      <div class="card own">
+        <div class="step-head">
+          <h3>Take the payment</h3>
+          <span class="chip fe">frontend only</span>
+        </div>
+        <p class="step-card-note">Hand <code>secretKey</code> to LiteAPI's Payment SDK and let the customer pay. No backend call, and no Stripe account of our own — the SDK talks to LiteAPI's Stripe integration directly.</p>
+        <p class="step-card-note">Treat <code>secretKey</code> as a live credential for this one payment: keep it in memory for the session, never in <code>localStorage</code>, never in a URL or analytics event, and never in a log. The server deliberately does not store it, so if you lose it, prebook again.</p>
+        <div class="callout frontend" style="margin-bottom:.9rem">
+          <span class="tag">Follow LiteAPI's docs for the SDK itself</span>
+          <p style="margin-bottom:0">The SDK's own initialisation and its success callback are LiteAPI's surface, not ours — use their documentation for the exact wiring. Two things about it are ours to flag: the SDK's <code>publicKey</code> is the literal <code>"sandbox"</code> or <code>"live"</code> rather than one of our keys, and after a successful payment it returns the customer to the <code>returnURL</code> you configured with LiteAPI. Treat arriving back at that URL as "payment likely done", then call step 6 and let the answer be the truth.</p>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div class="num">06</div>
+      <div class="card">
+        <div class="step-head">
+          <h3>Book it</h3>
+          <span class="chip fe">frontend calls it</span>
+          <span class="chip be">server decides</span>
+        </div>
+        <p class="step-card-note">Send the <code>prebookId</code> and the guest details. The server books with the stored payment pair, so this call succeeds only if the payment behind that pair actually settled. This is the payment gate: the provider, not the browser, is what establishes that money moved.</p>
+        <p class="step-card-note">A <code>201</code> means the reservation exists — show the confirmation. Anything else, read the error before deciding what to tell the customer.</p>
+        <p><span class="ep">POST /api/bookings</span> &nbsp;<span class="chip fe">auth</span></p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="tag">Holds expire — don't prebook speculatively</span>
+    <p style="margin-bottom:0">A prebook reserves inventory. The server expires the attempt 48 hours after it is created, and the provider releases an unpaid hold after one to two business days. Prebook when the customer is ready to pay, not while they browse, and don't loop over offers. If a customer abandons checkout, nothing needs cleaning up — the hold lapses on its own.</p>
+  </div>
+
+  <h2 id="auth">Auth</h2>
+  <p class="prose">One token, sent as a Bearer header on everything that needs it. The payload is <code>{ userId, role }</code> and the lifetime comes from <code>JWT_EXPIRES_IN</code> (an hour in development), so handle expiry as normal operation rather than an error state.</p>
+
+  <div class="codewrap">
+    <button class="copy" type="button">Copy</button>
+<pre><code>Authorization: Bearer &lt;token&gt;</code></pre>
+  </div>
+
+  <p class="prose">The three ways a token can be refused are worth distinguishing in the UI. All three are <code>401</code>:</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>When</th><th class="mono">message</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>No header at all</td><td class="mono">No token provided</td></tr>
+        <tr><td>Header present but not <code>Bearer &lt;token&gt;</code></td><td class="mono">Invalid authorization format</td></tr>
+        <tr><td>Expired or tampered with</td><td class="mono">Invalid or expired token</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout danger">
+    <span class="tag">Register and login return the user id differently</span>
+    <p style="margin-bottom:0">Register gives you the stored document, so the id is <code>data.user._id</code>. Login gives you a trimmed object, so the id is <code>data.user.id</code>. Both work, but the key differs — persist the login one and don't assume the other.</p>
+  </div>
+
+  <p class="prose">Both auth routes are rate limited, and the limits count failures rather than requests:</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Route</th><th>Limit</th><th>On exceeding</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">POST /api/auth/login</td><td>5 failed attempts per 15 min, per IP + email</td><td>429 <span class="mono">Too many failed login attempts. Please try again in 15 minutes.</span></td></tr>
+        <tr><td class="mono">POST /api/auth/register</td><td>5 per hour, per IP</td><td>429 <span class="mono">Too many requests. Please try again in an hour.</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="prose">Successful logins don't count towards the limit, so a working sign-in flow never locks itself out. Show the message on a <code>429</code> — it already says how long to wait.</p>
+
+  <h2 id="endpoints">Endpoints</h2>
+  <p class="prose">Request bodies are validated with a strict schema: unknown keys are dropped, and a missing or wrongly-typed field fails with <code>400</code> before anything reaches the provider. Dates are ISO <code>YYYY-MM-DD</code>, and prices are numbers in the currency you asked for.</p>
+
+  <h3>Stay criteria</h3>
+  <p class="prose">Steps 2 and 3 share one object. Step 3 is identical minus <code>placeId</code>.</p>
+  <div class="codewrap">
+    <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "checkin": "2026-11-01",
+  "checkout": "2026-11-03",
+  "occupancies": [{ "adults": 2, "children": [] }],
+  "currency": "USD",
+  "guestNationality": "US"
+}</code></pre>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">checkin / checkout</td><td>ISO dates. Checkout must be after checkin.</td></tr>
+        <tr><td class="mono">occupancies</td><td>One entry per room. <code>children</code> is an array of ages, empty when there are none — <code>[]</code>, not <code>null</code>.</td></tr>
+        <tr><td class="mono">currency</td><td>Prices come back in this currency. Show it; don't assume the customer's local one.</td></tr>
+        <tr><td class="mono">guestNationality</td><td>Two-letter country code. Affects which rates are available.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">GET</span>
+      <span class="path">/api/locations/search</span>
+      <span class="spacer"></span>
+      <span class="chip">no auth</span>
+    </div>
+    <h4>Query</h4>
+    <p><code>query</code> — the text the customer typed. Required, and an empty string is a <code>400</code>.</p>
+    <h4>Response 200</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": true,
+  "message": "Locations retrieved successfully",
+  "data": {
+    "locations": [
+      { "placeId": "ChIJD7fiBh9u5kcRYJSMaMOCCwQ", "name": "Paris", "address": "France" }
+    ]
+  }
+}</code></pre>
+    </div>
+    <p class="cap">No matches is a 200 with an empty array, not a 404.</p>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">POST</span>
+      <span class="path">/api/hotels/search</span>
+      <span class="spacer"></span>
+      <span class="chip">no auth</span>
+    </div>
+    <h4>Request</h4>
+    <p>Stay criteria plus <code>placeId</code> from the search above.</p>
+    <h4>Response 200</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": true,
+  "message": "Hotels retrieved successfully",
+  "data": {
+    "hotels": [
+      {
+        "id": "lp1899",
+        "name": "Hôtel Duc de Saint-Simon",
+        "photo": "https://…",
+        "address": "14 Rue de Saint-Simon, Paris",
+        "rating": 4,
+        "startingRate": {
+          "offerId": "…",
+          "roomName": "Classic Room",
+          "boardName": "Room Only",
+          "amount": 402.29,
+          "currency": "EUR",
+          "refundable": true
+        }
+      }
+    ]
+  }
+}</code></pre>
+    </div>
+    <ul>
+      <li><strong>There is no pagination.</strong> The provider returns rates cheapest-first and the whole list comes back in one response.</li>
+      <li><strong>Every hotel in the list has a <code>startingRate</code>.</strong> Hotels with nothing available are left out rather than returned with a null price, so you can render the list without null checks.</li>
+      <li>You get one rate per hotel here — the cheapest. The full set is on the details call.</li>
+      <li><code>refundable</code> is the cancellation posture. Surface it if you show cancellation terms.</li>
+      <li>A hotel with no availability at all comes back as an empty <code>hotels</code> array. Suggest different dates rather than showing a broken list.</li>
+    </ul>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">POST</span>
+      <span class="path">/api/hotels/:hotelId/details</span>
+      <span class="spacer"></span>
+      <span class="chip">no auth</span>
+    </div>
+    <h4>Request</h4>
+    <p>Stay criteria, without <code>placeId</code>.</p>
+    <h4>Response 200</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": true,
+  "message": "Hotel details retrieved successfully",
+  "data": {
+    "id": "lp1899",
+    "name": "Hôtel Duc de Saint-Simon",
+    "description": "…",
+    "photo": "https://…",
+    "address": "…",
+    "city": "Paris",
+    "country": "France",
+    "rating": 4,
+    "location": { "latitude": 48.8566, "longitude": 2.3266 },
+    "facilities": ["Free WiFi", "Bar"],
+    "checkin": "15:00",
+    "checkout": "11:00",
+    "rates": [
+      {
+        "offerId": "…",
+        "amount": 402.29,
+        "currency": "EUR",
+        "occupancyNumber": 1,
+        "roomName": "Classic Room",
+        "boardName": "Room Only",
+        "refundable": true
+      }
+    ]
+  }
+}</code></pre>
+    </div>
+    <ul>
+      <li><code>rates[].offerId</code> is the input to prebook. Send the <code>offerId</code> of the room the customer picked.</li>
+      <li><code>occupancyNumber</code> ties a rate to a room in the <code>occupancies</code> array you sent, starting at 1.</li>
+      <li><code>roomName</code> and <code>boardName</code> can be <code>null</code> — the provider doesn't always supply them. Fall back gracefully.</li>
+      <li><code>checkin</code> and <code>checkout</code> here are times of day as strings, not the dates you sent in.</li>
+    </ul>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">POST</span>
+      <span class="path">/api/bookings/prebook</span>
+      <span class="spacer"></span>
+      <span class="chip fe">auth</span>
+    </div>
+    <h4>Request</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{ "offerId": "…" }</code></pre>
+    </div>
+    <h4>Response 200</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": true,
+  "message": "Hotel prebooked successfully",
+  "data": {
+    "prebookId": "…",
+    "offerId": "…",
+    "hotelId": "lp1899",
+    "price": { "amount": 402.29, "currency": "EUR" },
+    "transactionId": "…",
+    "secretKey": "…",
+    "clientReference": "BL-2f1c9a4e-7d3b-4f8a-9c1e-5a6b7c8d9e0f"
+  }
+}</code></pre>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="mono">Field</th><th>What it's for</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">prebookId</td><td>Identifies this hold. Send it in step 6.</td></tr>
+          <tr><td class="mono">transactionId</td><td>The payment pair's other half, held server-side. <strong>Don't send it anywhere.</strong></td></tr>
+          <tr><td class="mono">secretKey</td><td>The payment client secret for the SDK. In memory only — see step 5.</td></tr>
+          <tr><td class="mono">price</td><td>The re-priced total. <strong>This is the price to show</strong>, and it can differ from the search result because the provider re-prices at this point.</td></tr>
+          <tr><td class="mono">clientReference</td><td>The booking's reference, safe to display. Also the server's idempotency key, so don't send it back.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h4>Failures</h4>
+    <ul>
+      <li><code>401</code> — no valid token. Send the customer through login first.</li>
+      <li><code>502</code> with provider code <code>2001</code> — the room sold out or the price moved between the search and now. Go back to step 3 and show the new price.</li>
+      <li><code>502</code> with <code>data.provider: null</code> — the connection dropped and no answer came back. Nothing is known about whether a hold was created, and the server does not retry a prebook on its own. Calling it again is fine: a hold that did get made lapses by itself, so the worst case is a second hold nobody pays for.</li>
+      <li><code>400</code> — missing or wrong-typed <code>offerId</code>.</li>
+    </ul>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">POST</span>
+      <span class="path">/api/bookings</span>
+      <span class="spacer"></span>
+      <span class="chip fe">auth</span>
+    </div>
+    <h4>Request — exactly these three keys</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "prebookId": "…",
+  "holder": { "firstName": "Ada", "lastName": "Okafor", "email": "ada@example.com" },
+  "guests": [
+    { "occupancyNumber": 1, "firstName": "Ada", "lastName": "Okafor", "email": "ada@example.com" }
+  ]
+}</code></pre>
+    </div>
+    <p class="cap">There is no transactionId, and no payment flag. Adding one is at best ignored and at worst a misunderstanding of who authorises the booking.</p>
+    <h4>Response 201</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": true,
+  "message": "Hotel booked successfully",
+  "data": {
+    "_id": "6710c…",
+    "userId": "…",
+    "clientReference": "BL-2f1c9a4e-…",
+    "status": "CONFIRMED",
+    "hotel": { "hotelId": "lp1899", "name": "Hôtel Duc de Saint-Simon" },
+    "stay": { "checkin": "2026-11-01T00:00:00.000Z", "checkout": "2026-11-03T00:00:00.000Z" },
+    "rooms": [{ "occupancyNumber": 1, "roomName": "Classic Room", "boardName": "Room Only" }],
+    "holder": { "firstName": "Ada", "lastName": "Okafor", "email": "ada@example.com" },
+    "price": { "amount": 402.29, "currency": "EUR" },
+    "payment": { "transactionId": "…" },
+    "liteApi": { "bookingId": "…" },
+    "createdAt": "2026-10-08T21:30:00.000Z",
+    "updatedAt": "2026-10-08T21:30:00.000Z"
+  }
+}</code></pre>
+    </div>
+    <h4>Failures — and what each one means for the customer</h4>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Response</th><th>What happened</th><th>What to do</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono nowrap">409</td>
+            <td>No pending prebook for this <code>prebookId</code> and account — already booked, expired, or a different user.</td>
+            <td>Don't retry. Refresh their bookings; if the reservation isn't there, start from step 4.</td>
+          </tr>
+          <tr>
+            <td class="mono nowrap">502<br>code 2014<br><span class="chip warn">ambiguous</span></td>
+            <td>Payment hasn't settled for this pair, or the provider couldn't finish. The booking is <strong>genuinely unknown</strong>.</td>
+            <td>Stop. No retry. "We're confirming your booking" — then check the booking list.</td>
+          </tr>
+          <tr>
+            <td class="mono nowrap">502<br>code 4002 / 4003</td>
+            <td>A field or the payment method was rejected. Nothing was booked.</td>
+            <td>Nothing was reserved. Send them back to the room list.</td>
+          </tr>
+          <tr>
+            <td class="mono nowrap">502<br>code 4005</td>
+            <td>This reference was already used for a booking.</td>
+            <td>Refresh the booking list — the reservation probably exists.</td>
+          </tr>
+          <tr>
+            <td class="mono nowrap">502<br><code>provider: null</code></td>
+            <td>The connection dropped and no answer came back. The server does not retry a booking on its own.</td>
+            <td>Treat as unknown, not as failed. Same handling as ambiguous.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">GET</span>
+      <span class="path">/api/bookings/my-bookings</span>
+      <span class="spacer"></span>
+      <span class="chip fe">auth</span>
+    </div>
+    <h4>Query</h4>
+    <p><code>page</code> (default 1) and <code>limit</code> (default 10, maximum 50). Anything outside that is a <code>400</code>.</p>
+    <h4>Response 200</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": true,
+  "message": "Bookings retrieved successfully",
+  "data": { "bookings": [ /* … */ ], "total": 3, "page": 1, "limit": 10 }
+}</code></pre>
+    </div>
+    <div class="callout">
+      <span class="tag">This list is a summary</span>
+      <p style="margin-bottom:0">List items omit <code>userId</code>, <code>payment</code> and <code>liteApi</code>, so there's no provider booking id or transaction id here. Fetch the single booking if you need the full record. Build pagination from <code>total</code>, not from <code>bookings.length</code>.</p>
+    </div>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">GET</span>
+      <span class="path">/api/bookings/:bookingId</span>
+      <span class="spacer"></span>
+      <span class="chip fe">auth</span>
+    </div>
+    <p>One booking, in full — including <code>payment</code> and <code>liteApi.bookingId</code>. The id must be a 24-character hex string, so validate it before you send it rather than letting a placeholder through: a malformed id is a <code>400</code>.</p>
+    <p>A booking that exists but belongs to someone else reads as <code>404 Booking not found</code>, not <code>403</code>. Don't build UI that distinguishes them — from the client's side they're the same thing.</p>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">GET</span>
+      <span class="path">/api/bookings/:bookingId/confirmation</span>
+      <span class="spacer"></span>
+      <span class="chip fe">auth</span>
+    </div>
+    <p>A deliberately small endpoint for polling one thing: <code>{ "status": "CONFIRMED" }</code>. Useful after an ambiguous result, or on a confirmation screen that reloads.</p>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">PUT</span>
+      <span class="path">/api/bookings/:bookingId</span>
+      <span class="spacer"></span>
+      <span class="chip fe">auth</span>
+    </div>
+    <p>Cancels through the provider. No request body.</p>
+    <h4>Response 200</h4>
+    <div class="codewrap">
+      <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": true,
+  "message": "Booking cancelled successfully",
+  "data": {
+    "bookingId": "…",
+    "status": "CANCELLED",
+    "cancellationFee": 40.23,
+    "refundAmount": 362.06,
+    "currency": "EUR"
+  }
+}</code></pre>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Response</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono nowrap">400</td><td>The booking isn't <code>CONFIRMED</code>, so it can't be cancelled — already cancelled, or never completed.</td></tr>
+          <tr><td class="mono nowrap">403</td><td>Not this customer's booking and not an admin.</td></tr>
+          <tr><td class="mono nowrap">502</td><td>The provider refused or failed. The local status is unchanged, so the booking is still live — check the provider code before telling anyone it's cancelled.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The fee and refund come from the provider's cancellation policy. They can be <code>null</code>, and they arrive in the booking's currency — show it. Since cancellation is final and costs money, confirm with the customer first, and read the fee back to them before you call this.</p>
+  </div>
+
+  <div class="ep-card">
+    <div class="ep-head">
+      <span class="verb">GET</span>
+      <span class="path">/api/health</span>
+      <span class="spacer"></span>
+      <span class="chip">no auth</span>
+    </div>
+    <p>Returns <code>200</code> with <code>{ "message": "OK" }</code> whenever the server process is up. It's a liveness check for deployment, not a status page — it doesn't tell you anything about the database or the provider.</p>
+  </div>
+
+  <h2 id="statuses">Statuses</h2>
+  <p class="prose">A booking's <code>status</code> is what you render. In practice you'll see two values, because a record is only written once the provider has confirmed the reservation.</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th class="mono">status</th><th>What to show</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">CONFIRMED</td><td>The reservation exists. Show the confirmation, the reference and the stay details.</td></tr>
+        <tr><td class="mono">CANCELLED</td><td>Cancelled through the provider. Show what was refunded if you have it.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="prose">The schema also allows <code>PENDING_PAYMENT</code>, <code>BOOKING_PROCESSING</code>, <code>PAYMENT_FAILED</code> and <code>BOOKING_FAILED</code>. Handle them defensively with a neutral "processing" state rather than a specific screen, but don't build a checkout flow that depends on seeing them — the current API doesn't produce them.</p>
+
+  <div class="callout">
+    <span class="tag">Payment and booking are separate states</span>
+    <p style="margin-bottom:0">A payment that succeeded is not a booking that succeeded. Until step 6 returns <code>201</code>, there is no reservation, whatever the payment SDK showed. The server keeps the attempt's own state separately, and an ambiguous outcome is recorded for investigation rather than discarded — which is why a booking can turn up in the customer's list after a call that looked like a failure.</p>
+  </div>
+
+  <h2 id="errors">Errors</h2>
+  <p class="prose">The HTTP status tells you who is at fault. The provider block, when present, tells you why — and <code>ambiguous</code> tells you whether it's safe to try again.</p>
+
+  <div class="codewrap">
+    <button class="copy" type="button">Copy</button>
+<pre><code>{
+  "success": false,
+  "message": "Booking failed",
+  "data": {
+    "provider": { "code": 2014, "description": "booking incomplete" },
+    "ambiguous": true
+  }
+}</code></pre>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th class="mono nowrap">Status</th><th>Meaning</th><th>What to do</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono nowrap">400</td><td>The request is malformed — a missing field, a bad date, an id that isn't 24 hex characters.</td><td>Fix the request. This is a bug on our side of the wire, so the message is worth logging.</td></tr>
+        <tr><td class="mono nowrap">401</td><td>No valid token.</td><td>Send them to log in and retry the call.</td></tr>
+        <tr><td class="mono nowrap">403</td><td>Authenticated, but not allowed — a cancelled booking, or someone else's record.</td><td>Don't retry. Hide the action instead.</td></tr>
+        <tr><td class="mono nowrap">404</td><td>Not found, or not theirs. Also used when the provider itself says 404.</td><td>Show an empty state.</td></tr>
+        <tr><td class="mono nowrap">409</td><td>The request conflicts with current state — most often a prebook that was already consumed.</td><td>Refresh state rather than retrying the same call.</td></tr>
+        <tr><td class="mono nowrap">429</td><td>Rate limited; only login and register are limited.</td><td>Show the message and wait. It states the interval.</td></tr>
+        <tr><td class="mono nowrap">502</td><td>The provider failed, or its response didn't make sense. <code>data.provider</code> carries the detail, or <code>null</code> if no answer arrived.</td><td>Read the code below before choosing.</td></tr>
+        <tr><td class="mono nowrap">500</td><td>Something broke on the server. The message is always <code>Internal server error</code> on purpose — details stay in the server log.</td><td>Show a generic failure. Report it with the time and the endpoint.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Provider codes worth handling</h3>
+  <p class="prose">These are the provider's own codes, not HTTP statuses. Match on <code>code</code>, never on the status alone, and prefer <code>description</code> when you need user-facing text.</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th class="mono nowrap">code</th><th>Meaning</th><th>Safe to retry?</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono nowrap">2001</td><td>No availability, or the price moved since the search.</td><td>Not this call — re-run the search or the room list and show the new price.</td></tr>
+        <tr><td class="mono nowrap">2013 / 2014 / 5000</td><td>Booking failed, incomplete, or the provider couldn't process it. <span class="chip warn">ambiguous</span></td><td><strong>No.</strong> The booking may exist. Check the booking list.</td></tr>
+        <tr><td class="mono nowrap">4002 / 4003</td><td>Missing, invalid or unacceptable field — including the payment method.</td><td>No. Nothing was booked; the customer starts again.</td></tr>
+        <tr><td class="mono nowrap">4005</td><td>This reference was already used.</td><td>No. Look for the existing booking.</td></tr>
+        <tr><td class="mono nowrap">4290 / 4291</td><td>The provider rate-limited us.</td><td>Yes — but only after a pause. The server already retried a few times with backoff before you saw this.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">The server retries reads, never bookings</span>
+    <p style="margin-bottom:0">Searches, hotel details and location lookups are retried inside the API: rate limits get a backoff, and a dropped connection to a read is attempted again. <strong>Booking and cancelling are never retried automatically</strong>, because the provider may have completed the work before the connection failed. If you see a <code>502</code> from a booking call, the server made exactly one attempt — which is precisely why its outcome can be unknown and why you must not paper over it with a retry of your own.</p>
+  </div>
+
+  <h2 id="checklist">Checklist before you ship</h2>
+  <ul>
+    <li>Token attached as <code>Bearer</code> on every <code>/api/bookings</code> call, and a <code>401</code> sends the customer through login.</li>
+    <li>Login happens <em>before</em> prebook — there's no guest path, and the token's owner is who the booking belongs to.</li>
+    <li>Login's user id read from <code>data.user.id</code>; register's from <code>data.user._id</code>.</li>
+    <li><code>secretKey</code> never stored, logged, or put in a URL, and used for one payment only.</li>
+    <li>Nothing derived from the client is trusted as payment proof — no <code>paymentSuccessful</code> flag is ever sent.</li>
+    <li>Prices shown come from the API response, never from a client-side calculation, and the post-prebook <code>price</code> replaces the search price once you have it.</li>
+    <li><code>offerId</code> passed through untouched from the details response.</li>
+    <li><code>ambiguous: true</code>, <code>409</code>, and a <code>502</code> with <code>provider: null</code> all lead to "we're checking", never to an automatic retry.</li>
+    <li>Dates formatted as <code>YYYY-MM-DD</code>; <code>children</code> sent as <code>[]</code> when empty.</li>
+    <li>Booking list built from <code>total</code>, with <code>limit</code> at or below 50.</li>
+    <li>Cancellation confirms with the customer and reads back the fee before calling, and treats <code>502</code> as "still booked".</li>
+    <li>Frontend served from the configured <code>FRONTEND_URL</code> origin, or CORS will refuse every call.</li>
+  </ul>
+
+  <p class="footer">Questions about a response shape or an unexpected provider code: send the endpoint, the time, and the <code>message</code> and <code>data.provider.code</code> from the response. The server logs the full provider error alongside it, which is usually enough to say exactly what the provider objected to.</p>
+</div>
+
+<script>
+  document.querySelectorAll(".copy").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var wrap = button.closest(".codewrap");
+      var code = wrap && wrap.querySelector("code");
+      if (!code) return;
+      var text = code.innerText;
+      var restore = function (label) {
+        button.textContent = label;
+        setTimeout(function () { button.textContent = "Copy"; }, 1800);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { restore("Copied"); },
+          function () { select(); }
+        );
+      } else {
+        select();
+      }
+      function select() {
+        try {
+          var range = document.createRange();
+          range.selectNodeContents(code);
+          var selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          restore("Press copy");
+        } catch (err) {
+          restore("Copy");
+        }
+      }
+    });
+  });
+</script>
+</body>
+</html>
