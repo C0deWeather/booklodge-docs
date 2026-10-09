@@ -508,6 +508,7 @@
           <span class="chip fe">frontend</span>
         </div>
         <p class="step-card-note">Every rate here has an <code>offerId</code>. That string is the only handle the provider accepts, so carry it into step 4 and don't invent or modify one.</p>
+        <p class="step-card-note">The same response carries the hotel gallery in <code>photos</code> and a room catalogue in <code>rooms</code> — each room's own pictures plus its bed type, occupancy and amenities. The catalogue and the rates are not joined, so match them by name.</p>
         <p><span class="ep">POST /api/hotels/:hotelId/details</span></p>
       </div>
     </li>
@@ -719,6 +720,32 @@
     "name": "Hôtel Duc de Saint-Simon",
     "description": "…",
     "photo": "https://…",
+    "photos": [
+      {
+        "url": "https://…",
+        "caption": "Lobby",
+        "hd_url": "https://…",
+        "mainPhoto": true
+      }
+    ],
+    "rooms": [
+      {
+        "id": 501,
+        "name": "Classic Room",
+        "description": "…",
+        "maxOccupancy": 2,
+        "bedType": "1 King Bed",
+        "amenities": ["Balcony", "Coffee Machine"],
+        "photos": [
+          {
+            "url": "https://…",
+            "imageDescription": "King bed",
+            "hd_url": "https://…",
+            "mainPhoto": true
+          }
+        ]
+      }
+    ],
     "address": "…",
     "city": "Paris",
     "country": "France",
@@ -746,6 +773,11 @@
       <li><code>occupancyNumber</code> ties a rate to a room in the <code>occupancies</code> array you sent, starting at 1.</li>
       <li><code>roomName</code> and <code>boardName</code> can be <code>null</code> — the provider doesn't always supply them. Fall back gracefully.</li>
       <li><code>checkin</code> and <code>checkout</code> here are times of day as strings, not the dates you sent in.</li>
+      <li><code>photos[]</code> is the hotel gallery, and <code>photo</code> is still the single main image for anywhere you only want one picture.</li>
+      <li><code>rooms[]</code> is the room catalogue: each room's own <code>photos</code>, plus <code>maxOccupancy</code>, <code>bedType</code> and <code>amenities</code>. It comes from the hotel record, while <code>rates[]</code> comes from a separate rates lookup, so the two are <strong>not joined for you</strong>.</li>
+      <li>To give each offer its own pictures and room details, match on the name: <code>rates[].roomName</code> equals <code>rooms[].name</code>. If nothing matches, fall back to the hotel gallery and the rate's own <code>roomName</code> — the provider's spellings are not guaranteed to agree.</li>
+      <li>Photo entries are <strong>objects, not strings</strong>. Use <code>.url</code> for the display size and <code>.hd_url</code> when you want the large one (<code>hd_url</code> is absent on some images). <code>caption</code>, <code>imageDescription</code> and <code>mainPhoto</code> are optional — <code>mainPhoto: true</code> is the provider's preferred image for that room.</li>
+      <li><code>rooms[]</code>, <code>amenities[]</code> and every room's <code>photos[]</code> are always arrays, possibly empty. <code>bedType</code>, <code>maxOccupancy</code> and <code>description</code> are optional and may be missing, so render each only when it is there.</li>
     </ul>
   </div>
 
@@ -1057,6 +1089,8 @@
     <li>Nothing derived from the client is trusted as payment proof — no <code>paymentSuccessful</code> flag is ever sent.</li>
     <li>Prices shown come from the API response, never from a client-side calculation, and the post-prebook <code>price</code> replaces the search price once you have it.</li>
     <li><code>offerId</code> passed through untouched from the details response.</li>
+    <li>Room pictures read from the matching <code>rooms[]</code> entry via <code>photos[].url</code>, not from the hotel's single <code>photo</code> — and the page still renders when that room has no photos or no name match.</li>
+    <li><code>bedType</code>, <code>maxOccupancy</code> and <code>amenities</code> shown only when the room supplies them, rather than as placeholder text.</li>
     <li><code>ambiguous: true</code>, <code>409</code>, and a <code>502</code> with <code>provider: null</code> all lead to "we're checking", never to an automatic retry.</li>
     <li>Dates formatted as <code>YYYY-MM-DD</code>; <code>children</code> sent as <code>[]</code> when empty.</li>
     <li>Booking list built from <code>total</code>, with <code>limit</code> at or below 50.</li>
